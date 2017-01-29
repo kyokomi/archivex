@@ -9,7 +9,6 @@ package archivex
 import (
 	"archive/tar"
 	"archive/zip"
-	"bufio"
 	"compress/gzip"
 	"io"
 	"io/ioutil"
@@ -86,38 +85,35 @@ func (z *ZipFile) Add(name string, file []byte) error {
 
 // AddFile add file from dir in archive
 func (z *ZipFile) AddFile(name string) error {
-	zippedFile, err := z.Writer.Create(name)
+	filePath := filepath.Join(name)
+	info, err := os.Stat(filePath)
 	if err != nil {
 		return err
 	}
 
-	file, _ := os.Open(filepath.Join(name))
-	fileReader := bufio.NewReader(file)
-
-	blockSize := 512 * 1024 // 512kb
-	bytes := make([]byte, blockSize)
-
-	for {
-		readedBytes, err := fileReader.Read(bytes)
-
-		if err != nil {
-			if err.Error() == "EOF" {
-				break
-			}
-
-			if err.Error() != "EOF" {
-				return err
-			}
-		}
-
-		if readedBytes >= blockSize {
-			zippedFile.Write(bytes)
-			continue
-		}
-
-		zippedFile.Write(bytes[:readedBytes])
+	if info.IsDir() {
+		return err
 	}
 
+	header, err := zip.FileInfoHeader(info)
+	if err != nil {
+		return err
+	}
+
+	zippedFile, err := z.Writer.CreateHeader(header)
+	if err != nil {
+		return err
+	}
+
+	header.Name = name
+	header.Method = zip.Deflate
+
+	file, _ := os.Open(filePath)
+	defer file.Close()
+
+	if _, err := io.Copy(zippedFile, file); err != nil {
+		return err
+	}
 	return nil
 }
 
