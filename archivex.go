@@ -23,6 +23,7 @@ import (
 // interface
 type Archivex interface {
 	Create(name string) error
+	CreateWithName(name string) error
 	Add(name string, file []byte) error
 	AddFile(name string) error
 	AddAll(dir string, includeCurrentFolder bool) error
@@ -47,8 +48,8 @@ type TarFile struct {
 	Compressed bool
 }
 
-// Create new file zip
-func (z *ZipFile) Create(name string) error {
+// Create new file zip with replace zip name
+func (z *ZipFile) CreateWithName(name string) error {
 	// check extension .zip
 	if strings.HasSuffix(name, ".zip") != true {
 		if strings.HasSuffix(name, ".tar.gz") == true {
@@ -57,6 +58,11 @@ func (z *ZipFile) Create(name string) error {
 			name = name + ".zip"
 		}
 	}
+	return z.Create(name)
+}
+
+// Create new file zip
+func (z *ZipFile) Create(name string) error {
 	z.Name = name
 	file, err := os.Create(z.Name)
 	if err != nil {
@@ -162,6 +168,22 @@ func (z *ZipFile) Close() error {
 	return err
 }
 
+// Create new Tar file with replace zip name
+func (t *TarFile) CreateWithName(name string) error {
+	// check to see if they have the wrong extension
+	if strings.HasSuffix(name, ".tar.gz") != true && strings.HasSuffix(name, ".tar") != true {
+		// is it .zip? replace it
+		if strings.HasSuffix(name, ".zip") == true {
+			name = strings.Replace(name, ".zip", ".tar.gz", -1)
+		} else {
+			// if it's not, add .tar
+			// since we'll assume it's not compressed
+			name = name + ".tar"
+		}
+	}
+	return t.Create(name)
+}
+
 // Create new Tar file
 func (t *TarFile) Create(name string) error {
 	// check the filename extension
@@ -171,19 +193,6 @@ func (t *TarFile) Create(name string) error {
 		t.Compressed = true
 	} else {
 		t.Compressed = false
-	}
-
-	// check to see if they have the wrong extension
-	if strings.HasSuffix(name, ".tar.gz") != true && strings.HasSuffix(name, ".tar") != true {
-		// is it .zip? replace it
-		if strings.HasSuffix(name, ".zip") == true {
-			name = strings.Replace(name, ".zip", ".tar.gz", -1)
-			t.Compressed = true
-		} else {
-			// if it's not, add .tar
-			// since we'll assume it's not compressed
-			name = name + ".tar"
-		}
 	}
 
 	t.Name = name
