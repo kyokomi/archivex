@@ -105,7 +105,6 @@ func (z *ZipFile) AddFile(name string) error {
 		return err
 	}
 
-	header.Name = name
 	header.Method = zip.Deflate
 
 	file, _ := os.Open(filePath)
